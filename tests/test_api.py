@@ -59,9 +59,11 @@ async def test_missing_or_wrong_api_key_is_401(client: AsyncClient) -> None:
     assert (await client.post("/api/v1/payments", json=BODY, headers=wrong)).status_code == 401
 
 
-async def test_missing_idempotency_key_is_422(client: AsyncClient) -> None:
+async def test_missing_or_too_long_idempotency_key_is_422(client: AsyncClient) -> None:
     response = await client.post("/api/v1/payments", json=BODY, headers={"X-API-Key": API_KEY})
     assert response.status_code == 422
+    too_long = {**HEADERS, "Idempotency-Key": "k" * 256}
+    assert (await client.post("/api/v1/payments", json=BODY, headers=too_long)).status_code == 422
 
 
 async def test_invalid_body_is_422(client: AsyncClient) -> None:

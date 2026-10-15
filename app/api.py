@@ -25,7 +25,7 @@ def require_api_key(
     settings: Annotated[Settings, Depends(get_settings)],
     x_api_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    if not hmac.compare_digest(x_api_key or "", settings.api_key):
+    if not hmac.compare_digest((x_api_key or "").encode(), settings.api_key.encode()):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -50,7 +50,9 @@ app = FastAPI(
 
 @app.post("/api/v1/payments", status_code=202, response_model=PaymentAccepted)
 async def create_payment(
-    data: PaymentCreate, idempotency_key: Annotated[str, Header()], session: SessionDep
+    data: PaymentCreate,
+    idempotency_key: Annotated[str, Header(min_length=1, max_length=255)],
+    session: SessionDep,
 ) -> Payment:
     try:
         return await service.create_payment(session, idempotency_key, data)
