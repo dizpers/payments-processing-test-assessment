@@ -85,7 +85,7 @@ uv sync
 uv run pytest
 ```
 
-Нужен запущенный Docker: testcontainers поднимает одноразовые PostgreSQL и RabbitMQ, тесты не читают `DATABASE_URL` и `RABBITMQ_URL` из окружения. Миграции накатываются Alembic'ом, так что схема в тестах та же, что в compose. Обработчик проверяется в памяти через `TestRabbitBroker`; цепочка повторов и DLQ проверяется на живом RabbitMQ в `tests/test_topology.py`. Линтеры: `uv run ruff check . && uv run mypy app`.
+Нужен запущенный Docker: testcontainers поднимает одноразовые PostgreSQL и RabbitMQ, тесты не читают `DATABASE_URL` и `RABBITMQ_URL` из окружения. Миграции накатываются Alembic'ом, так что схема в тестах та же, что в compose. Обработчик проверяется в памяти через `TestRabbitBroker`; цепочка повторов и DLQ проверяется на живом RabbitMQ в `tests/test_topology.py`. Линтеры: `uv run ruff check . && uv run mypy app`. То же самое выполняет GitHub Actions на каждый push, см. `.github/workflows/ci.yml`.
 
 ## Решения
 
