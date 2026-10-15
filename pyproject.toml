@@ -46,3 +46,6 @@ addopts = "--strict-markers -q"
 
 [tool.ruff.lint.isort]
 known-third-party = ["alembic"]
+
+[tool.uv]
+package = false
