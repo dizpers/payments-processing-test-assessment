@@ -8,7 +8,7 @@
 docker compose up --build
 ```
 
-Поднимаются postgres, rabbitmq, одноразовый `migrate` (накатывает миграции), затем `api` и `consumer`. API на http://localhost:8000, панель RabbitMQ на http://localhost:15672 (guest / guest). Ключ API по умолчанию `dev-api-key`, задаётся переменной `API_KEY`. Если порты заняты, переопределите их переменными `API_PORT`, `POSTGRES_PORT`, `RABBITMQ_PORT`, `RABBITMQ_UI_PORT`: `RABBITMQ_PORT=5673 RABBITMQ_UI_PORT=15673 docker compose up --build`.
+Поднимаются postgres, rabbitmq, одноразовый `migrate` (накатывает миграции), затем `api` и `consumer`. API на http://localhost:8000, панель RabbitMQ на http://localhost:15672 (guest / guest). Ключ API по умолчанию `dev-api-key`, задаётся переменной `API_KEY`. Swagger UI на http://localhost:8000/docs: кнопка Authorize принимает ключ, дальше запросы можно слать из браузера. Если порты заняты, переопределите их переменными `API_PORT`, `POSTGRES_PORT`, `RABBITMQ_PORT`, `RABBITMQ_UI_PORT`: `RABBITMQ_PORT=5673 RABBITMQ_UI_PORT=15673 docker compose up --build`.
 
 ## Примеры
 

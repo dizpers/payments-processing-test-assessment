@@ -120,6 +120,13 @@ async def test_create_writes_an_outbox_event_for_the_payment(
     assert event.published_at is None
 
 
-async def test_openapi_routes_are_disabled(client: AsyncClient) -> None:
-    for path in ("/docs", "/redoc", "/openapi.json"):
-        assert (await client.get(path, headers=HEADERS)).status_code == 404, path
+async def test_docs_are_open_and_describe_the_api_key(client: AsyncClient) -> None:
+    assert (await client.get("/docs")).status_code == 200
+
+    schema = (await client.get("/openapi.json")).json()
+
+    scheme = schema["components"]["securitySchemes"]["APIKeyHeader"]
+    assert scheme == {"type": "apiKey", "in": "header", "name": "X-API-Key"}
+    for path in schema["paths"].values():
+        for operation in path.values():
+            assert operation["security"] == [{"APIKeyHeader": []}]
