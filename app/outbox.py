@@ -40,8 +40,8 @@ async def run_relay(
     while True:
         try:
             published = await relay_once(sessionmaker, broker)
-        except Exception:
-            log.exception("outbox relay failed; retrying")
+        except Exception as exc:
+            log.warning("outbox relay failed, retrying in %ss: %r", poll_interval, exc)
             published = 0
         if published == 0:
             await asyncio.sleep(poll_interval)
