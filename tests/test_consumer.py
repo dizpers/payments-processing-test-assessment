@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 from uuid import uuid4
 
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import service
 from app.broker import EXCHANGE, NEW, retry_queues
-from app.consumer import make_app
+from app.consumer import make_app, process_payment
 from app.models import Payment, PaymentStatus
 from app.schemas import PaymentCreate, PaymentEvent
 from tests.conftest import TEST_SETTINGS
@@ -145,3 +146,28 @@ async def test_failed_retry_publish_does_not_reject_the_message(
 
 async def _record(into: list[bool]) -> None:
     into.append(True)
+
+
+async def test_concurrent_deliveries_charge_and_notify_once(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    recorder = Recorder()
+    charges_started = 0
+
+    async def slow_gateway() -> PaymentStatus:
+        nonlocal charges_started
+        charges_started += 1
+        await asyncio.sleep(0.2)
+        return await recorder.gateway()
+
+    payment = await make_payment(sessionmaker)
+
+    await asyncio.gather(
+        *(
+            process_payment(sessionmaker, payment.id, slow_gateway, recorder.webhook)
+            for _ in range(3)
+        )
+    )
+
+    assert charges_started == 1
+    assert len(recorder.webhooks) == 1
