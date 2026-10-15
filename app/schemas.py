@@ -24,6 +24,23 @@ class PaymentAccepted(BaseModel):
     created_at: datetime
 
 
+class PaymentEvent(BaseModel):
+    """Body of every message on the payments exchange."""
+
+    payment_id: UUID
+
+
+class WebhookPayload(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    payment_id: UUID = Field(validation_alias="id")
+    status: PaymentStatus
+    amount: Decimal
+    currency: Currency
+    processed_at: datetime | None
+    metadata: dict[str, Any] = Field(validation_alias="metadata_")
+
+
 class PaymentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
