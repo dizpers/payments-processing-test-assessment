@@ -63,10 +63,14 @@ async def process_payment(
                 payment.status = await gateway()
                 payment.processed_at = datetime.now(UTC)
         # The gateway result is committed before the webhook: a failed webhook must not
-        # roll back the charge.
-        if payment.webhook_sent_at is None:
-            await webhook(payment)
-            async with session.begin():
+        # roll back the charge. The webhook runs under a fresh row lock so concurrent
+        # deliveries cannot both send it.
+        async with session.begin():
+            payment = await session.get_one(
+                Payment, payment_id, with_for_update=True, populate_existing=True
+            )
+            if payment.webhook_sent_at is None:
+                await webhook(payment)
                 payment.webhook_sent_at = datetime.now(UTC)
 
 
@@ -92,13 +96,19 @@ def make_app(
                 log.exception("payment %s failed after %s retries", payment_id, attempt)
                 raise
             log.warning("payment %s attempt %s failed, scheduling retry", payment_id, attempt)
-            await broker.publish(
-                {"payment_id": str(payment_id)},
-                exchange=EXCHANGE,
-                routing_key=retry_queue_name(attempt + 1),
-                headers={"x-attempt": attempt + 1},
-                persist=True,
-            )
+            try:
+                await broker.publish(
+                    {"payment_id": str(payment_id)},
+                    exchange=EXCHANGE,
+                    routing_key=retry_queue_name(attempt + 1),
+                    headers={"x-attempt": attempt + 1},
+                    persist=True,
+                )
+            except Exception:
+                # Could not park the message: give it back to the queue instead of
+                # letting the reject-on-error policy dead-letter it early.
+                log.exception("payment %s: retry publish failed, requeueing", payment_id)
+                await message.nack()
 
     relay: asyncio.Task[None] | None = None
 

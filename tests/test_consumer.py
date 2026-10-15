@@ -121,3 +121,27 @@ async def test_failure_after_the_last_retry_rejects_the_message(
                 routing_key=NEW,
                 headers={"x-attempt": last_attempt},
             )
+
+
+async def test_failed_retry_publish_does_not_reject_the_message(
+    sessionmaker: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorder = Recorder(fail_webhook=True)
+    app = make_app(TEST_SETTINGS, sessionmaker, recorder.gateway, recorder.webhook)
+    payment = await make_payment(sessionmaker)
+    nacked: list[bool] = []
+
+    async def failing_publish(*args: object, **kwargs: object) -> None:
+        raise ConnectionError("broker gone")
+
+    async with TestRabbitBroker(app.broker) as broker:
+        real_publish = broker.publish
+        monkeypatch.setattr(RabbitMessage, "nack", lambda self, **kw: _record(nacked))
+        monkeypatch.setattr(app.broker, "publish", failing_publish)
+        await real_publish({"payment_id": str(payment.id)}, exchange=EXCHANGE, routing_key=NEW)
+
+    assert nacked == [True], "the message is handed back to the queue, not rejected"
+
+
+async def _record(into: list[bool]) -> None:
+    into.append(True)
