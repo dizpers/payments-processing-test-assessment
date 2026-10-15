@@ -116,3 +116,8 @@ async def test_create_writes_an_outbox_event_for_the_payment(
     assert event.event_type == "payment.created"
     assert event.payload == {"payment_id": created["payment_id"]}
     assert event.published_at is None
+
+
+async def test_openapi_routes_are_disabled(client: AsyncClient) -> None:
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert (await client.get(path, headers=HEADERS)).status_code == 404, path

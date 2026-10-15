@@ -1,3 +1,4 @@
+import hmac
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -24,7 +25,7 @@ def require_api_key(
     settings: Annotated[Settings, Depends(get_settings)],
     x_api_key: Annotated[str | None, Header()] = None,
 ) -> None:
-    if x_api_key != settings.api_key:
+    if not hmac.compare_digest(x_api_key or "", settings.api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -35,7 +36,16 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
-app = FastAPI(title="Payments", lifespan=lifespan, dependencies=[Depends(require_api_key)])
+# No OpenAPI routes: the spec puts every endpoint behind the API key, and Swagger UI cannot
+# fetch the schema with a custom header.
+app = FastAPI(
+    title="Payments",
+    lifespan=lifespan,
+    dependencies=[Depends(require_api_key)],
+    openapi_url=None,
+    docs_url=None,
+    redoc_url=None,
+)
 
 
 @app.post("/api/v1/payments", status_code=202, response_model=PaymentAccepted)
